@@ -1,0 +1,250 @@
+import "./index.css";
+import { useEffect, useState } from "react";
+import { AccountCard } from "./components/AccountCard";
+import { ApiKeysSection } from "./components/ApiKeysSection";
+import { AuthPromptCard } from "./components/AuthPromptCard";
+import { ProjectsSection } from "./components/ProjectsSection";
+import { SecretsSection } from "./components/SecretsSection";
+import { StatusMessage } from "./components/StatusMessage";
+import type { ApiKey, Me, MessageState, Project, SecretListItem, SecretValue } from "./components/types";
+
+async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
+  const headers = new Headers(opts.headers);
+  if (opts.body) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const res = await fetch(path, {
+    credentials: "include",
+    ...opts,
+    headers,
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(errorBody.error || res.statusText);
+  }
+
+  if (res.status === 204) {
+    return null as T;
+  }
+
+  return res.json() as Promise<T>;
+}
+
+export function App() {
+  const [authChecked, setAuthChecked] = useState(false);
+  const [me, setMe] = useState<Me | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [secrets, setSecrets] = useState<SecretListItem[]>([]);
+  const [selectedKeyProject, setSelectedKeyProject] = useState("");
+  const [selectedSecretProject, setSelectedSecretProject] = useState("");
+  const [projectSlug, setProjectSlug] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [keyName, setKeyName] = useState("");
+  const [keyPermission, setKeyPermission] = useState("read");
+  const [keyOnce, setKeyOnce] = useState<string | null>(null);
+  const [secretKey, setSecretKey] = useState("");
+  const [secretValue, setSecretValue] = useState("");
+  const [message, setMessage] = useState<MessageState>({ text: "", isError: false });
+
+  const hasProjects = projects.length > 0;
+
+  const setSuccessMessage = (text: string) => setMessage({ text, isError: false });
+  const setErrorMessage = (error: unknown) => setMessage({ text: error instanceof Error ? error.message : String(error), isError: true });
+
+  const refreshProjects = async () => {
+    const loadedProjects = await api<Project[]>("/api/projects");
+    setProjects(loadedProjects);
+
+    if (!loadedProjects.length) {
+      setSelectedKeyProject("");
+      setSelectedSecretProject("");
+      setSecrets([]);
+      return;
+    }
+
+    setSelectedKeyProject(prev => {
+      if (loadedProjects.some(project => project.slug === prev)) {
+        return prev;
+      }
+      return loadedProjects[0]!.slug;
+    });
+
+    setSelectedSecretProject(prev => {
+      if (loadedProjects.some(project => project.slug === prev)) {
+        return prev;
+      }
+      return loadedProjects[0]!.slug;
+    });
+  };
+
+  const refreshKeys = async () => {
+    const loadedKeys = await api<ApiKey[]>("/api/keys");
+    setKeys(loadedKeys);
+  };
+
+  const refreshSecrets = async (slug: string) => {
+    if (!slug) {
+      setSecrets([]);
+      return;
+    }
+    const loadedSecrets = await api<SecretListItem[]>(`/api/projects/${slug}/secrets`);
+    setSecrets(loadedSecrets);
+  };
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const loadedMe = await api<Me>("/api/me");
+        setMe(loadedMe);
+        await refreshProjects();
+        await refreshKeys();
+      } catch {
+        setMe(null);
+      } finally {
+        setAuthChecked(true);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSecretProject) {
+      setSecrets([]);
+      return;
+    }
+    void refreshSecrets(selectedSecretProject).catch(setErrorMessage);
+  }, [selectedSecretProject]);
+
+  const onLogout = async () => {
+    await api<null>("/auth/logout", { method: "POST" });
+    location.reload();
+  };
+
+  const onCreateProject = async () => {
+    try {
+      await api<null>("/api/projects", {
+        method: "POST",
+        body: JSON.stringify({ slug: projectSlug, name: projectName }),
+      });
+      setProjectSlug("");
+      setProjectName("");
+      await refreshProjects();
+      setSuccessMessage("Project created");
+    } catch (error) {
+      setErrorMessage(error);
+    }
+  };
+
+  const onCreateKey = async () => {
+    try {
+      const project = projects.find(item => item.slug === selectedKeyProject);
+      if (!project) {
+        throw new Error("Choose a project before creating a key");
+      }
+
+      const created = await api<{ key: string }>("/api/keys", {
+        method: "POST",
+        body: JSON.stringify({
+          name: keyName,
+          scopes: [{ project_id: project.id, permission: keyPermission }],
+        }),
+      });
+      setKeyOnce(created.key);
+      setKeyName("");
+      await refreshKeys();
+    } catch (error) {
+      setErrorMessage(error);
+    }
+  };
+
+  const onRevokeKey = async (id: string) => {
+    await api<null>(`/api/keys/${id}`, { method: "DELETE" });
+    await refreshKeys();
+  };
+
+  const onRevealSecret = async (slug: string, key: string) => {
+    const value = await api<SecretValue>(`/api/projects/${slug}/secrets/${encodeURIComponent(key)}`);
+    alert(`${value.key_name} = ${value.value}`);
+  };
+
+  const onDeleteSecret = async (slug: string, key: string) => {
+    await api<null>(`/api/projects/${slug}/secrets/${encodeURIComponent(key)}`, { method: "DELETE" });
+    await refreshSecrets(slug);
+  };
+
+  const onSaveSecret = async () => {
+    try {
+      if (!selectedSecretProject) {
+        throw new Error("Choose a project before saving a secret");
+      }
+      await api<null>(`/api/projects/${selectedSecretProject}/secrets/${encodeURIComponent(secretKey)}`, {
+        method: "PUT",
+        body: JSON.stringify({ value: secretValue }),
+      });
+      setSecretValue("");
+      await refreshSecrets(selectedSecretProject);
+      setSuccessMessage("Secret saved");
+    } catch (error) {
+      setErrorMessage(error);
+    }
+  };
+
+  return (
+    <main>
+      <h1>oz secrets</h1>
+
+      <AuthPromptCard authChecked={authChecked} me={me} />
+
+      {me && (
+        <>
+          <AccountCard me={me} onLogout={onLogout} />
+
+          <ProjectsSection
+            projectSlug={projectSlug}
+            projectName={projectName}
+            projects={projects}
+            onProjectSlugChange={setProjectSlug}
+            onProjectNameChange={setProjectName}
+            onCreateProject={onCreateProject}
+          />
+
+          <ApiKeysSection
+            keyName={keyName}
+            keyPermission={keyPermission}
+            keyOnce={keyOnce}
+            selectedKeyProject={selectedKeyProject}
+            projects={projects}
+            keys={keys}
+            hasProjects={hasProjects}
+            onKeyNameChange={setKeyName}
+            onKeyPermissionChange={setKeyPermission}
+            onSelectedProjectChange={setSelectedKeyProject}
+            onCreateKey={onCreateKey}
+            onRevokeKey={onRevokeKey}
+          />
+
+          <SecretsSection
+            selectedSecretProject={selectedSecretProject}
+            secretKey={secretKey}
+            secretValue={secretValue}
+            projects={projects}
+            secrets={secrets}
+            hasProjects={hasProjects}
+            onSelectedProjectChange={setSelectedSecretProject}
+            onSecretKeyChange={setSecretKey}
+            onSecretValueChange={setSecretValue}
+            onRevealSecret={onRevealSecret}
+            onDeleteSecret={onDeleteSecret}
+            onSaveSecret={onSaveSecret}
+          />
+
+          <StatusMessage message={message} />
+        </>
+      )}
+    </main>
+  );
+}
+
+export default App;

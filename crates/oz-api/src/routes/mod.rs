@@ -78,7 +78,7 @@ pub fn api_router() -> Router<AppState> {
 }
 
 async fn index() -> Html<&'static str> {
-    Html(include_str!("../ui/index.html"))
+    Html(include_str!(env!("OZ_UI_HTML_PATH")))
 }
 
 #[send]
