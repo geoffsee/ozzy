@@ -1,0 +1,9 @@
+# Rust
+/target
+
+# Cloudflare Workers (oz-api)
+node_modules
+.wrangler
+
+# OS
+.DS_Store
