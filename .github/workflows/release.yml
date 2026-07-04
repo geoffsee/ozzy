@@ -8,6 +8,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CRATE: cli
+  BINARY: oz
 
 jobs:
   build:
@@ -53,7 +54,7 @@ jobs:
           ARCHIVE="cli-${VERSION}-${TARGET}.tar.gz"
 
           mkdir -p "dist/cli-${VERSION}-${TARGET}"
-          cp "target/${TARGET}/release/${{ env.CRATE }}" "dist/cli-${VERSION}-${TARGET}/"
+          cp "target/${TARGET}/release/${{ env.BINARY }}" "dist/cli-${VERSION}-${TARGET}/"
           tar -czf "dist/${ARCHIVE}" -C "dist/cli-${VERSION}-${TARGET}" .
 
       - uses: actions/upload-artifact@v4
