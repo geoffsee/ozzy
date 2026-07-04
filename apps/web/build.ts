@@ -128,6 +128,8 @@ const inlineTag = async (
   return result;
 };
 
+const escapeInlineScript = (js: string) => js.replace(/<\/script/gi, "<\\/script");
+
 let htmlText = generatedHtml;
 
 log("Inlining CSS");
@@ -144,7 +146,7 @@ log("Inlining JavaScript");
 htmlText = await inlineTag(
     htmlText,
     /<script[^>]+src=["']([^"']+)["'][^>]*><\/script>/gi,
-    js => `<script>${js}</script>`,
+    js => `<script>${escapeInlineScript(js)}</script>`,
     "script",
 );
 
