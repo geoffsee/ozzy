@@ -4,8 +4,8 @@ use axum::response::{Html, Redirect};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use oz_core::{
-    parse_api_key, parse_bearer, validate_slug, ApiKeyPermission, MemberRole, Profile, Project,
-    SecretMeta, SecretValue,
+    allows_api_key_permission, is_owner, parse_api_key, parse_bearer, validate_slug,
+    ApiKeyPermission, MemberRole, Profile, Project, SecretMeta, SecretValue,
 };
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
@@ -19,7 +19,8 @@ use crate::crypto::{decrypt_secret, encrypt_secret, unwrap_dek};
 use crate::db::api_keys::{create_api_key, list_api_keys, revoke_api_key};
 use crate::db::profiles::get_profile_by_login;
 use crate::db::projects::{
-    add_member, create_project, list_members, list_projects_for_profile, remove_member,
+    add_member, create_project, get_member_role, get_project_for_profile_by_id, list_members,
+    list_projects_for_profile, remove_member,
 };
 use crate::db::secrets::{delete_secret, get_secret_row, list_secrets, upsert_secret};
 use crate::error::{bad_request, AppError, AppResult};
@@ -147,10 +148,18 @@ async fn csrf_token_handler(auth: AuthContext, session: Session) -> AppResult<Js
 #[send]
 async fn list_projects(auth: AuthContext, State(state): State<AppState>) -> AppResult<Json<Vec<Project>>> {
     if let Some(ref key) = auth.api_key {
+        let db = state.db()?;
         let mut projects = Vec::new();
         for scope in &key.scopes {
-            if let Some(p) = crate::db::projects::get_project_by_id(&state.db()?, &scope.project_id).await? {
-                projects.push(p);
+            if get_project_for_profile_by_id(&db, &auth.profile.id, &scope.project_id)
+                .await?
+                .is_some()
+            {
+                if let Some(p) =
+                    crate::db::projects::get_project_by_id(&db, &scope.project_id).await?
+                {
+                    projects.push(p);
+                }
             }
         }
         return Ok(Json(projects));
@@ -317,14 +326,23 @@ async fn create_key_handler(
     if body.name.trim().is_empty() {
         return Err(bad_request("name required"));
     }
+    let db = state.db()?;
     let mut scopes = Vec::new();
     for s in body.scopes {
         let perm = ApiKeyPermission::parse(&s.permission)
             .ok_or_else(|| bad_request("invalid permission"))?;
+        let project = get_project_for_profile_by_id(&db, &auth.profile.id, &s.project_id)
+            .await?
+            .ok_or(AppError::NotFound)?;
+        let owner = is_owner(&auth.profile.id, &project.owner_profile_id);
+        let role = get_member_role(&db, &project.id, &auth.profile.id).await?;
+        if !allows_api_key_permission(owner, role, perm) {
+            return Err(bad_request("insufficient permission for project scope"));
+        }
         scopes.push((s.project_id, perm));
     }
     let created = create_api_key(
-        &state.db()?,
+        &db,
         &auth.profile.id,
         body.name.trim(),
         &scopes,

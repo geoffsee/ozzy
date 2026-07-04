@@ -28,7 +28,7 @@ Under `[vars]`:
 
 #### Test environment
 
-`[env.test]` and related sections define local test values (`OZ_TEST_MODE`, test GitHub API base, fake test D1 id, and test secrets).
+`[env.test]` and related sections define local test values (`OZ_ENV=test`, test GitHub API base, fake test D1 id, and test secrets). Test-mode OAuth stubs are only active when `OZ_ENV=test`.
 
 ### Secrets and local dev values
 

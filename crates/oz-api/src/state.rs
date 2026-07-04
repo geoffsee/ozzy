@@ -39,9 +39,7 @@ impl AppState {
     }
 
     pub fn test_mode(&self) -> bool {
-        self.var("OZ_TEST_MODE")
-            .map(|v| v == "1")
-            .unwrap_or(false)
+        matches!(self.var("OZ_ENV").as_deref(), Ok("test"))
     }
 
     pub fn github_api_base(&self) -> AppResult<String> {

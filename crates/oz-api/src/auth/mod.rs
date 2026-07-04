@@ -8,7 +8,7 @@ use tower_sessions::Session;
 use worker::send;
 
 use crate::db::api_keys::{resolve_api_key, ResolvedApiKey};
-use crate::db::projects::{get_member_role, get_project_for_profile};
+use crate::db::projects::{get_member_role, get_project_for_profile, get_project_for_profile_by_id};
 use crate::db::ProjectCryptoRow;
 use crate::error::{AppError, AppResult};
 use crate::session_store::SESSION_PROFILE_KEY;
@@ -115,8 +115,25 @@ impl AuthContext {
         }
     }
 
-    pub async fn project_access(&self, state: &AppState, slug: &str) -> AppResult<ProjectAccess> {
-        project_access_for(self, state, slug).await
+    pub async fn project_access(&self, state: &AppState, project_ref: &str) -> AppResult<ProjectAccess> {
+        project_access_for(self, state, project_ref).await
+    }
+}
+
+fn is_project_id(value: &str) -> bool {
+    uuid::Uuid::parse_str(value).is_ok()
+}
+
+#[send]
+async fn resolve_project_for_profile(
+    db: &worker::D1Database,
+    profile_id: &str,
+    project_ref: &str,
+) -> AppResult<Option<ProjectCryptoRow>> {
+    if is_project_id(project_ref) {
+        get_project_for_profile_by_id(db, profile_id, project_ref).await
+    } else {
+        get_project_for_profile(db, profile_id, project_ref).await
     }
 }
 
@@ -124,10 +141,10 @@ impl AuthContext {
 async fn project_access_for(
     auth: &AuthContext,
     state: &AppState,
-    slug: &str,
+    project_ref: &str,
 ) -> AppResult<ProjectAccess> {
     let db = state.db()?;
-    let project = get_project_for_profile(&db, &auth.profile.id, slug)
+    let project = resolve_project_for_profile(&db, &auth.profile.id, project_ref)
         .await?
         .ok_or(AppError::NotFound)?;
 

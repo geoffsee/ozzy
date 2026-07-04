@@ -1,4 +1,5 @@
 use oz_core::{MemberRole, Project};
+use crate::error::AppError;
 use base64::Engine;
 use serde::Deserialize;
 use worker::D1Database;
@@ -129,34 +130,69 @@ pub async fn get_project_by_id(db: &D1Database, id: &str) -> AppResult<Option<Pr
     .map(|r| r.map(Into::into))
 }
 
-pub async fn get_project_for_profile(
+fn project_crypto_from_row(r: serde_json::Value) -> Option<ProjectCryptoRow> {
+    Some(ProjectCryptoRow {
+        id: r["id"].as_str()?.to_string(),
+        slug: r["slug"].as_str()?.to_string(),
+        name: r["name"].as_str()?.to_string(),
+        owner_profile_id: r["owner_profile_id"].as_str()?.to_string(),
+        wrapped_dek: decode_blob(&r["wrapped_dek"])?,
+        dek_wrap_nonce: decode_blob(&r["dek_wrap_nonce"])?,
+    })
+}
+
+pub async fn get_project_for_profile_by_id(
     db: &D1Database,
     profile_id: &str,
-    slug: &str,
+    project_id: &str,
 ) -> AppResult<Option<ProjectCryptoRow>> {
     let row = db
         .prepare(
             "SELECT p.id, p.slug, p.name, p.owner_profile_id, p.wrapped_dek, p.dek_wrap_nonce
              FROM projects p
              LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.profile_id = ?1
-             WHERE p.slug = ?2 AND (p.owner_profile_id = ?1 OR pm.profile_id IS NOT NULL)
-             LIMIT 1",
+             WHERE p.id = ?2 AND (p.owner_profile_id = ?1 OR pm.profile_id IS NOT NULL)",
         )
-        .bind(&[profile_id.into(), slug.into()])?
+        .bind(&[profile_id.into(), project_id.into()])?
         .first::<serde_json::Value>(None)
         .await
         .map_err(|e| internal(e))?;
 
-    Ok(row.and_then(|r| {
-        Some(ProjectCryptoRow {
-            id: r["id"].as_str()?.to_string(),
-            slug: r["slug"].as_str()?.to_string(),
-            name: r["name"].as_str()?.to_string(),
-            owner_profile_id: r["owner_profile_id"].as_str()?.to_string(),
-            wrapped_dek: decode_blob(&r["wrapped_dek"])?,
-            dek_wrap_nonce: decode_blob(&r["dek_wrap_nonce"])?,
-        })
-    }))
+    Ok(row.and_then(project_crypto_from_row))
+}
+
+pub async fn get_project_for_profile(
+    db: &D1Database,
+    profile_id: &str,
+    slug: &str,
+) -> AppResult<Option<ProjectCryptoRow>> {
+    let rows = db
+        .prepare(
+            "SELECT p.id, p.slug, p.name, p.owner_profile_id, p.wrapped_dek, p.dek_wrap_nonce
+             FROM projects p
+             LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.profile_id = ?1
+             WHERE p.slug = ?2 AND (p.owner_profile_id = ?1 OR pm.profile_id IS NOT NULL)
+             ORDER BY p.created_at ASC",
+        )
+        .bind(&[profile_id.into(), slug.into()])?
+        .all()
+        .await
+        .map_err(|e| internal(e))?;
+
+    let projects = rows
+        .results::<serde_json::Value>()
+        .map_err(|e| internal(e))?
+        .into_iter()
+        .filter_map(project_crypto_from_row)
+        .collect::<Vec<_>>();
+
+    match projects.len() {
+        0 => Ok(None),
+        1 => Ok(projects.into_iter().next()),
+        _ => Err(AppError::Conflict(format!(
+            "ambiguous project slug \"{slug}\"; use project id instead"
+        ))),
+    }
 }
 
 pub async fn get_project_by_slug_any(

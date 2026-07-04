@@ -36,6 +36,17 @@ pub fn effective_write(is_owner: bool, role: Option<MemberRole>) -> bool {
     is_owner || role.is_some_and(can_write_member)
 }
 
+pub fn allows_api_key_permission(
+    is_owner: bool,
+    role: Option<MemberRole>,
+    permission: ApiKeyPermission,
+) -> bool {
+    match permission {
+        ApiKeyPermission::Read => effective_read(is_owner, role),
+        ApiKeyPermission::Write => effective_write(is_owner, role),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,5 +76,22 @@ mod tests {
         assert!(can_read_api_key(ApiKeyPermission::Read));
         assert!(!can_write_api_key(ApiKeyPermission::Read));
         assert!(can_write_api_key(ApiKeyPermission::Write));
+    }
+
+    #[test]
+    fn api_key_scope_requires_membership_role() {
+        assert!(allows_api_key_permission(false, Some(MemberRole::Read), ApiKeyPermission::Read));
+        assert!(!allows_api_key_permission(
+            false,
+            Some(MemberRole::Read),
+            ApiKeyPermission::Write
+        ));
+        assert!(allows_api_key_permission(
+            false,
+            Some(MemberRole::Write),
+            ApiKeyPermission::Write
+        ));
+        assert!(!allows_api_key_permission(false, None, ApiKeyPermission::Read));
+        assert!(allows_api_key_permission(true, None, ApiKeyPermission::Write));
     }
 }
