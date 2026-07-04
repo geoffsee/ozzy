@@ -4,6 +4,9 @@
 # Cloudflare Workers (oz-api)
 node_modules
 .wrangler
+.dev.vars
 
 # OS
 .DS_Store
+/.idea/
+wrangler.toml
