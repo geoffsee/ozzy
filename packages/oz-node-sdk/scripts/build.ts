@@ -150,7 +150,7 @@ export class OzNodeSdkClient {
       throw new Error('No fetch implementation available in this environment');
     }
 
-    this.#baseUrl = baseUrl.replace(/\/$/, '');
+    this.#baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     this.#apiKey = apiKey ?? null;
     this.#fetch = resolvedFetch;
     this.#defaultHeaders = { ...headers };
