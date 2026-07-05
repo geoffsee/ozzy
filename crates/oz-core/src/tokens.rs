@@ -3,12 +3,14 @@ pub const API_KEY_PREFIX: &str = "oz_live_";
 pub fn parse_bearer(header: Option<&str>) -> Option<&str> {
     let header = header?;
     let prefix = "Bearer ";
-    header.strip_prefix(prefix).map(str::trim).filter(|t| !t.is_empty())
+    header
+        .strip_prefix(prefix)
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
 }
 
 pub fn parse_api_key(raw: &str) -> Option<&str> {
-    raw.strip_prefix(API_KEY_PREFIX)
-        .filter(|k| k.len() >= 32)
+    raw.strip_prefix(API_KEY_PREFIX).filter(|k| k.len() >= 32)
 }
 
 pub fn api_key_prefix(raw: &str) -> String {

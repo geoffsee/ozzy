@@ -44,8 +44,7 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            api_url: std::env::var("OZ_API_URL")
-                .unwrap_or_else(|_| "http://localhost:8787".into()),
+            api_url: std::env::var("OZ_API_URL").unwrap_or_else(|_| "http://localhost:8787".into()),
             api_key: std::env::var("OZ_API_KEY").ok(),
         }
     }

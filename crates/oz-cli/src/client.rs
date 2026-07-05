@@ -38,6 +38,36 @@ impl ApiClient {
         self.parse(resp)
     }
 
+    pub fn post<T: DeserializeOwned>(&self, path: &str, body: &impl serde::Serialize) -> Result<T> {
+        let resp = self
+            .client
+            .post(format!("{}{}", self.base, path))
+            .header(AUTHORIZATION, format!("Bearer {}", self.api_key))
+            .header(CONTENT_TYPE, "application/json")
+            .json(body)
+            .send()
+            .context("request failed")?;
+        self.parse(resp)
+    }
+
+    pub fn post_no_content(&self, path: &str, body: &impl serde::Serialize) -> Result<()> {
+        let resp = self
+            .client
+            .post(format!("{}{}", self.base, path))
+            .header(AUTHORIZATION, format!("Bearer {}", self.api_key))
+            .header(CONTENT_TYPE, "application/json")
+            .json(body)
+            .send()
+            .context("request failed")?;
+        if resp.status().is_success() {
+            Ok(())
+        } else {
+            let status = resp.status();
+            let body = resp.text().unwrap_or_default();
+            bail!("API error {status}: {body}");
+        }
+    }
+
     pub fn put<T: DeserializeOwned>(&self, path: &str, body: &impl serde::Serialize) -> Result<T> {
         let resp = self
             .client
@@ -48,22 +78,6 @@ impl ApiClient {
             .send()
             .context("request failed")?;
         self.parse(resp)
-    }
-
-    pub fn delete(&self, path: &str) -> Result<()> {
-        let resp = self
-            .client
-            .delete(format!("{}{}", self.base, path))
-            .header(AUTHORIZATION, format!("Bearer {}", self.api_key))
-            .send()
-            .context("request failed")?;
-        if resp.status().is_success() {
-            Ok(())
-        } else {
-            let status = resp.status();
-            let body = resp.text().unwrap_or_default();
-            bail!("API error {status}: {body}");
-        }
     }
 
     fn parse<T: DeserializeOwned>(&self, resp: reqwest::blocking::Response) -> Result<T> {

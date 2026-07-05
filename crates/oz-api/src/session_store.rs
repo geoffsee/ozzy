@@ -91,11 +91,7 @@ async fn save_record(store: &D1SessionStore, record: &Record) -> session_store::
         "INSERT INTO tower_sessions (id, data, expiry_date) VALUES (?1, ?2, ?3)
          ON CONFLICT(id) DO UPDATE SET data = excluded.data, expiry_date = excluded.expiry_date",
     )
-    .bind(&[
-        record.id.to_string().into(),
-        data.into(),
-        expiry.into(),
-    ])
+    .bind(&[record.id.to_string().into(), data.into(), expiry.into()])
     .map_err(|e| session_store::Error::Backend(e.to_string()))?
     .run()
     .await
@@ -105,7 +101,10 @@ async fn save_record(store: &D1SessionStore, record: &Record) -> session_store::
 }
 
 #[worker::send]
-async fn load_record(store: &D1SessionStore, session_id: &Id) -> session_store::Result<Option<Record>> {
+async fn load_record(
+    store: &D1SessionStore,
+    session_id: &Id,
+) -> session_store::Result<Option<Record>> {
     let db = store.db()?;
     let row = db
         .prepare("SELECT data, expiry_date FROM tower_sessions WHERE id = ?1")

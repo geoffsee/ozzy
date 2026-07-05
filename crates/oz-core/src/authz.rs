@@ -1,7 +1,10 @@
 use crate::models::{ApiKeyPermission, MemberRole};
 
 pub fn can_read_member(role: MemberRole) -> bool {
-    matches!(role, MemberRole::Read | MemberRole::Write | MemberRole::Admin)
+    matches!(
+        role,
+        MemberRole::Read | MemberRole::Write | MemberRole::Admin
+    )
 }
 
 pub fn can_write_member(role: MemberRole) -> bool {
@@ -80,7 +83,11 @@ mod tests {
 
     #[test]
     fn api_key_scope_requires_membership_role() {
-        assert!(allows_api_key_permission(false, Some(MemberRole::Read), ApiKeyPermission::Read));
+        assert!(allows_api_key_permission(
+            false,
+            Some(MemberRole::Read),
+            ApiKeyPermission::Read
+        ));
         assert!(!allows_api_key_permission(
             false,
             Some(MemberRole::Read),
@@ -91,7 +98,15 @@ mod tests {
             Some(MemberRole::Write),
             ApiKeyPermission::Write
         ));
-        assert!(!allows_api_key_permission(false, None, ApiKeyPermission::Read));
-        assert!(allows_api_key_permission(true, None, ApiKeyPermission::Write));
+        assert!(!allows_api_key_permission(
+            false,
+            None,
+            ApiKeyPermission::Read
+        ));
+        assert!(allows_api_key_permission(
+            true,
+            None,
+            ApiKeyPermission::Write
+        ));
     }
 }

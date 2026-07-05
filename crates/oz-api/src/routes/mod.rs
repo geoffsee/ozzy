@@ -1,7 +1,7 @@
 use axum::extract::{Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{Html, Redirect};
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use oz_core::{
     allows_api_key_permission, is_owner, parse_api_key, parse_bearer, validate_slug,
@@ -15,6 +15,7 @@ use uuid::Uuid;
 use worker::send;
 
 use crate::auth::github::{finish_github_oauth, start_github_oauth};
+use crate::auth::{AuthContext, AuthMethod, ProjectAccess};
 use crate::crypto::{decrypt_secret, encrypt_secret, unwrap_dek};
 use crate::db::api_keys::{create_api_key, list_api_keys, revoke_api_key};
 use crate::db::profiles::get_profile_by_login;
@@ -24,7 +25,6 @@ use crate::db::projects::{
 };
 use crate::db::secrets::{delete_secret, get_secret_row, list_secrets, upsert_secret};
 use crate::error::{bad_request, AppError, AppResult};
-use crate::auth::{AuthContext, AuthMethod, ProjectAccess};
 use crate::session_store::{SESSION_CSRF_TOKEN_KEY, SESSION_PROFILE_KEY};
 use crate::state::AppState;
 
@@ -47,13 +47,10 @@ pub fn api_router() -> Router<AppState> {
         )
         .route("/api/keys", get(list_keys_handler).post(create_key_handler))
         .route("/api/keys/{id}", delete(revoke_key_handler))
-        .route("/api/projects/{slug}/secrets", get(list_secrets_handler))
-        .route(
-            "/api/projects/{slug}/secrets/{key}",
-            get(get_secret_handler)
-                .put(put_secret_handler)
-                .delete(delete_secret_handler),
-        )
+        .route("/api/secrets/list", post(list_secrets_by_body_handler))
+        .route("/api/secrets/read", post(get_secret_by_body_handler))
+        .route("/api/secrets/write", put(put_secret_by_body_handler))
+        .route("/api/secrets/delete", post(delete_secret_by_body_handler))
         .route("/v1/projects", get(list_projects))
         .route("/v1/projects/{slug}/secrets", get(list_secrets_handler))
         .route(
@@ -62,6 +59,11 @@ pub fn api_router() -> Router<AppState> {
                 .put(put_secret_handler)
                 .delete(delete_secret_handler),
         )
+        .route("/v2/projects", get(list_projects))
+        .route("/v2/secrets/list", post(list_secrets_by_body_handler))
+        .route("/v2/secrets/read", post(get_secret_by_body_handler))
+        .route("/v2/secrets/write", put(put_secret_by_body_handler))
+        .route("/v2/secrets/delete", post(delete_secret_by_body_handler))
         .route("/test/github/login/oauth/access_token", post(test_github_token))
         .route("/test/github/user", get(test_github_user))
         .layer(SetResponseHeaderLayer::if_not_present(
@@ -107,10 +109,7 @@ async fn auth_github_callback(
     session: Session,
 ) -> AppResult<Redirect> {
     let profile = finish_github_oauth(&state, &q.code, &q.state).await?;
-    session
-        .cycle_id()
-        .await
-        .map_err(|_| AppError::Internal)?;
+    session.cycle_id().await.map_err(|_| AppError::Internal)?;
     session
         .insert(SESSION_PROFILE_KEY, profile.id)
         .await
@@ -123,7 +122,11 @@ async fn auth_github_callback(
 }
 
 #[send]
-async fn auth_logout(auth: AuthContext, headers: HeaderMap, session: Session) -> AppResult<StatusCode> {
+async fn auth_logout(
+    auth: AuthContext,
+    headers: HeaderMap,
+    session: Session,
+) -> AppResult<StatusCode> {
     enforce_csrf(&auth, &session, &headers).await?;
     session.delete().await.map_err(|_| AppError::Internal)?;
     Ok(StatusCode::NO_CONTENT)
@@ -139,14 +142,20 @@ struct CsrfTokenResponse {
 }
 
 #[send]
-async fn csrf_token_handler(auth: AuthContext, session: Session) -> AppResult<Json<CsrfTokenResponse>> {
+async fn csrf_token_handler(
+    auth: AuthContext,
+    session: Session,
+) -> AppResult<Json<CsrfTokenResponse>> {
     auth.require_session()?;
     let token = ensure_csrf_token(&session).await?;
     Ok(Json(CsrfTokenResponse { token }))
 }
 
 #[send]
-async fn list_projects(auth: AuthContext, State(state): State<AppState>) -> AppResult<Json<Vec<Project>>> {
+async fn list_projects(
+    auth: AuthContext,
+    State(state): State<AppState>,
+) -> AppResult<Json<Vec<Project>>> {
     if let Some(ref key) = auth.api_key {
         let db = state.db()?;
         let mut projects = Vec::new();
@@ -211,14 +220,12 @@ async fn create_project_handler(
 }
 
 #[send]
-async fn get_project_exists(
-    state: &AppState,
-    profile_id: &str,
-    slug: &str,
-) -> AppResult<bool> {
-    Ok(crate::db::projects::get_project_for_profile(&state.db()?, profile_id, slug)
-        .await?
-        .is_some())
+async fn get_project_exists(state: &AppState, profile_id: &str, slug: &str) -> AppResult<bool> {
+    Ok(
+        crate::db::projects::get_project_for_profile(&state.db()?, profile_id, slug)
+            .await?
+            .is_some(),
+    )
 }
 
 #[derive(Deserialize)]
@@ -368,17 +375,49 @@ async fn revoke_key_handler(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[derive(Deserialize)]
+struct SecretProjectBody {
+    project: String,
+}
+
 #[send]
 async fn list_secrets_handler(
     auth: AuthContext,
     State(state): State<AppState>,
     axum::extract::Path(slug): axum::extract::Path<String>,
 ) -> AppResult<Json<Vec<SecretMeta>>> {
-    let access = auth.project_access(&state, &slug).await?;
+    list_secrets_for_project(&auth, &state, &slug).await
+}
+
+#[send]
+async fn list_secrets_by_body_handler(
+    auth: AuthContext,
+    headers: HeaderMap,
+    session: Session,
+    State(state): State<AppState>,
+    Json(body): Json<SecretProjectBody>,
+) -> AppResult<Json<Vec<SecretMeta>>> {
+    enforce_csrf(&auth, &session, &headers).await?;
+    list_secrets_for_project(&auth, &state, &body.project).await
+}
+
+#[send]
+async fn list_secrets_for_project(
+    auth: &AuthContext,
+    state: &AppState,
+    project: &str,
+) -> AppResult<Json<Vec<SecretMeta>>> {
+    let access = auth.project_access(state, project).await?;
     if !access.can_read {
         return Err(AppError::NotFound);
     }
     Ok(Json(list_secrets(&state.db()?, &access.project.id).await?))
+}
+
+#[derive(Deserialize)]
+struct SecretSelectorBody {
+    project: String,
+    key: String,
 }
 
 #[send]
@@ -387,12 +426,41 @@ async fn get_secret_handler(
     State(state): State<AppState>,
     axum::extract::Path((slug, key)): axum::extract::Path<(String, String)>,
 ) -> AppResult<Json<SecretValue>> {
-    let access = auth.project_access(&state, &slug).await?;
+    get_secret_for_project_key(&auth, &state, &slug, &key).await
+}
+
+#[send]
+async fn get_secret_by_body_handler(
+    auth: AuthContext,
+    headers: HeaderMap,
+    session: Session,
+    State(state): State<AppState>,
+    Json(body): Json<SecretSelectorBody>,
+) -> AppResult<Json<SecretValue>> {
+    enforce_csrf(&auth, &session, &headers).await?;
+    get_secret_for_project_key(&auth, &state, &body.project, &body.key).await
+}
+
+#[send]
+async fn get_secret_for_project_key(
+    auth: &AuthContext,
+    state: &AppState,
+    project: &str,
+    key: &str,
+) -> AppResult<Json<SecretValue>> {
+    let access = auth.project_access(state, project).await?;
     if !access.can_read {
         return Err(AppError::NotFound);
     }
-    let value = read_secret(&state, &access, &key).await?;
+    let value = read_secret(state, &access, key).await?;
     Ok(Json(value))
+}
+
+#[derive(Deserialize)]
+struct PutSecretByBody {
+    project: String,
+    key: String,
+    value: String,
 }
 
 #[derive(Deserialize)]
@@ -410,14 +478,37 @@ async fn put_secret_handler(
     Json(body): Json<PutSecretBody>,
 ) -> AppResult<Json<SecretValue>> {
     enforce_csrf(&auth, &session, &headers).await?;
-    let access = auth.project_access(&state, &slug).await?;
+    put_secret_for_project_key(&auth, &state, &slug, &key, &body.value).await
+}
+
+#[send]
+async fn put_secret_by_body_handler(
+    auth: AuthContext,
+    headers: HeaderMap,
+    session: Session,
+    State(state): State<AppState>,
+    Json(body): Json<PutSecretByBody>,
+) -> AppResult<Json<SecretValue>> {
+    enforce_csrf(&auth, &session, &headers).await?;
+    put_secret_for_project_key(&auth, &state, &body.project, &body.key, &body.value).await
+}
+
+#[send]
+async fn put_secret_for_project_key(
+    auth: &AuthContext,
+    state: &AppState,
+    project: &str,
+    key: &str,
+    value: &str,
+) -> AppResult<Json<SecretValue>> {
+    let access = auth.project_access(state, project).await?;
     if !access.can_write {
         return Err(AppError::NotFound);
     }
-    let version = write_secret(&state, &access, &key, &body.value, &auth.profile.id).await?;
+    let version = write_secret(state, &access, key, value, &auth.profile.id).await?;
     Ok(Json(SecretValue {
-        key_name: key,
-        value: body.value,
+        key_name: key.to_string(),
+        value: value.to_string(),
         version,
     }))
 }
@@ -431,11 +522,33 @@ async fn delete_secret_handler(
     axum::extract::Path((slug, key)): axum::extract::Path<(String, String)>,
 ) -> AppResult<StatusCode> {
     enforce_csrf(&auth, &session, &headers).await?;
-    let access = auth.project_access(&state, &slug).await?;
+    delete_secret_for_project_key(&auth, &state, &slug, &key).await
+}
+
+#[send]
+async fn delete_secret_by_body_handler(
+    auth: AuthContext,
+    headers: HeaderMap,
+    session: Session,
+    State(state): State<AppState>,
+    Json(body): Json<SecretSelectorBody>,
+) -> AppResult<StatusCode> {
+    enforce_csrf(&auth, &session, &headers).await?;
+    delete_secret_for_project_key(&auth, &state, &body.project, &body.key).await
+}
+
+#[send]
+async fn delete_secret_for_project_key(
+    auth: &AuthContext,
+    state: &AppState,
+    project: &str,
+    key: &str,
+) -> AppResult<StatusCode> {
+    let access = auth.project_access(state, project).await?;
     if !access.can_write {
         return Err(AppError::NotFound);
     }
-    if !delete_secret(&state.db()?, &access.project.id, &key).await? {
+    if !delete_secret(&state.db()?, &access.project.id, key).await? {
         return Err(AppError::NotFound);
     }
     Ok(StatusCode::NO_CONTENT)
@@ -530,9 +643,7 @@ fn auth_uses_api_key(auth: &AuthContext, auth_header: Option<&str>) -> bool {
     if matches!(auth.method, AuthMethod::ApiKey) {
         return true;
     }
-    parse_bearer(auth_header)
-        .and_then(parse_api_key)
-        .is_some()
+    parse_bearer(auth_header).and_then(parse_api_key).is_some()
 }
 
 fn validate_csrf_values(provided: Option<&str>, expected: Option<&str>) -> AppResult<()> {
@@ -584,7 +695,9 @@ async fn enforce_csrf(auth: &AuthContext, session: &Session, headers: &HeaderMap
         .get::<String>(SESSION_CSRF_TOKEN_KEY)
         .await
         .map_err(|_| AppError::Internal)?;
-    let provided = headers.get(CSRF_HEADER).and_then(|value| value.to_str().ok());
+    let provided = headers
+        .get(CSRF_HEADER)
+        .and_then(|value| value.to_str().ok());
     validate_csrf_values(provided, expected.as_deref())
 }
 
@@ -614,7 +727,8 @@ mod tests {
 
     #[test]
     fn csrf_rejects_missing_token() {
-        let err = validate_csrf_values(None, Some("expected")).expect_err("should reject missing token");
+        let err =
+            validate_csrf_values(None, Some("expected")).expect_err("should reject missing token");
         assert!(matches!(err, AppError::BadRequest(message) if message == "csrf token missing"));
     }
 
@@ -627,7 +741,8 @@ mod tests {
 
     #[test]
     fn csrf_accepts_matching_token() {
-        validate_csrf_values(Some("expected"), Some("expected")).expect("should accept matching token");
+        validate_csrf_values(Some("expected"), Some("expected"))
+            .expect("should accept matching token");
     }
 }
 

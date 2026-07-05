@@ -1,0 +1,32 @@
+{
+  "name": "oz",
+  "private": true,
+  "type": "module",
+  "description": "Monorepo tooling for oz",
+  "workspaces": [
+    "apps/web",
+    "packages/oz-node-sdk"
+  ],
+  "scripts": {
+    "build": "bun run api:build && bun run cli:build",
+    "build:web": "bun --cwd apps/web run build",
+    "dev:web": "bun --cwd apps/web run dev",
+    "test:web": "bun --cwd apps/web run test",
+    "openapi": "cargo build -p oz-api",
+    "api:build": "cargo build -p oz-api",
+    "api:dev": "wrangler dev -e test --cwd crates/oz-api",
+    "api:deploy": "wrangler deploy --cwd crates/oz-api",
+    "cli:build": "cargo build -p oz-cli",
+    "cli:install": "cargo install --path crates/oz-cli --force",
+    "sdk:build": "bun --cwd packages/oz-node-sdk run build",
+    "sdk:rebuild": "bun run openapi && bun run sdk:build",
+    "sdk:clean": "bun --cwd packages/oz-node-sdk run clean",
+    "sdk:publish": "bun run openapi && bun --cwd packages/oz-node-sdk publish --access public",
+    "workspace:install:web": "bun --cwd apps/web install",
+    "workspace:install:sdk": "bun --cwd packages/oz-node-sdk install",
+    "workspace:install": "bun install && bun run workspace:install:web && bun run workspace:install:sdk",
+    "test:api": "cargo test -p oz-api",
+    "test:cli": "cargo test -p oz-cli",
+    "test:all": "cargo test"
+  }
+}

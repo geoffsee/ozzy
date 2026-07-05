@@ -26,7 +26,8 @@ pub fn sha256_raw(data: &[u8]) -> Vec<u8> {
 }
 
 pub fn hmac_sha256_b64(key_material: &[u8], data: &[u8]) -> AppResult<String> {
-    let mut mac = <HmacSha256 as Mac>::new_from_slice(key_material).map_err(|_| internal("hmac key"))?;
+    let mut mac =
+        <HmacSha256 as Mac>::new_from_slice(key_material).map_err(|_| internal("hmac key"))?;
     mac.update(data);
     Ok(base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes()))
 }
@@ -95,5 +96,9 @@ pub fn decrypt_secret(dek: &[u8], ciphertext: &[u8], nonce: &[u8]) -> AppResult<
 }
 
 pub fn generate_api_key_token() -> String {
-    format!("{}{}", oz_core::API_KEY_PREFIX, uuid::Uuid::new_v4().simple())
+    format!(
+        "{}{}",
+        oz_core::API_KEY_PREFIX,
+        uuid::Uuid::new_v4().simple()
+    )
 }

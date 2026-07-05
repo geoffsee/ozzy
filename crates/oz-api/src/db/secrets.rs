@@ -1,5 +1,5 @@
-use oz_core::SecretMeta;
 use base64::Engine;
+use oz_core::SecretMeta;
 use serde::Deserialize;
 use worker::D1Database;
 
@@ -115,11 +115,7 @@ pub async fn upsert_secret(
     Ok(version)
 }
 
-pub async fn delete_secret(
-    db: &D1Database,
-    project_id: &str,
-    key_name: &str,
-) -> AppResult<bool> {
+pub async fn delete_secret(db: &D1Database, project_id: &str, key_name: &str) -> AppResult<bool> {
     let result = db
         .prepare("DELETE FROM secrets WHERE project_id = ?1 AND key_name = ?2")
         .bind(&[project_id.into(), key_name.into()])?

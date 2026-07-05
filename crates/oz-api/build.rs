@@ -1,12 +1,11 @@
-use std::{
-    env,
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
+#[path = "src/openapi.rs"]
+mod openapi;
+
+use std::{env, fs, path::Path, path::PathBuf, process::Command};
 
 fn main() {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
+    let manifest_dir =
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
     let workspace_root = manifest_dir
         .parent()
         .and_then(Path::parent)
@@ -39,7 +38,33 @@ fn main() {
         panic!("bun web build failed while compiling oz-api");
     }
 
+    let spec = openapi::build_openapi();
+    let spec_json = serde_json::to_string_pretty(&spec)
+        .expect("failed to serialize generated OpenAPI spec to JSON");
+    let openapi_path = resolve_openapi_path(&workspace_root);
+    if let Some(parent) = openapi_path.parent() {
+        fs::create_dir_all(parent)
+            .unwrap_or_else(|error| panic!("failed to create OpenAPI output dir {}: {error}", parent.display()));
+    }
+    fs::write(&openapi_path, spec_json).unwrap_or_else(|error| {
+        panic!("failed to write generated OpenAPI spec to {}: {error}", openapi_path.display())
+    });
+
+    println!("cargo:warning=generated OpenAPI spec at {}", openapi_path.display());
     println!("cargo:rustc-env=OZ_UI_HTML_PATH={}", output_file.display());
+    println!("cargo:rerun-if-changed={}", manifest_dir.join("src/openapi.rs").display());
+    println!(
+        "cargo:rerun-if-changed={}",
+        manifest_dir.join("src/routes/mod.rs").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        workspace_root.join("crates/oz-core/src/models.rs").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        workspace_root.join("crates/oz-core/src/lib.rs").display()
+    );
 }
 
 fn emit_rerun_for_dir(dir: &Path) {
@@ -55,7 +80,10 @@ fn emit_rerun_for_dir(dir: &Path) {
 
     for entry in entries {
         let entry = entry.unwrap_or_else(|error| {
-            panic!("failed to read directory entry in {}: {error}", dir.display());
+            panic!(
+                "failed to read directory entry in {}: {error}",
+                dir.display()
+            );
         });
         let path = entry.path();
         if path.is_dir() {
@@ -64,4 +92,18 @@ fn emit_rerun_for_dir(dir: &Path) {
             println!("cargo:rerun-if-changed={}", path.display());
         }
     }
+}
+
+fn resolve_openapi_path(workspace_root: &Path) -> PathBuf {
+    let target_dir = env::var("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| workspace_root.join("target"));
+
+    let target_dir = if target_dir.is_absolute() {
+        target_dir
+    } else {
+        workspace_root.join(target_dir)
+    };
+
+    target_dir.join("openapi").join("openapi.json")
 }

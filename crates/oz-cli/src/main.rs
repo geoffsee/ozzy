@@ -111,7 +111,7 @@ fn handle_project(command: ProjectCommands) -> Result<()> {
     let client = ApiClient::from_env()?;
     match command {
         ProjectCommands::List => {
-            let projects: Vec<Project> = client.get("/v1/projects")?;
+            let projects: Vec<Project> = client.get("/v2/projects")?;
             if projects.is_empty() {
                 println!("No projects");
             } else {
@@ -128,18 +128,20 @@ fn handle_secrets(command: SecretsCommands) -> Result<()> {
     let client = ApiClient::from_env()?;
     match command {
         SecretsCommands::List { project } => {
-            let secrets: Vec<SecretMeta> =
-                client.get(&format!("/v1/projects/{project}/secrets"))?;
+            let secrets: Vec<SecretMeta> = client.post(
+                "/v2/secrets/list",
+                &serde_json::json!({ "project": project }),
+            )?;
             for s in secrets {
                 println!("{} (v{})", s.key_name, s.version);
             }
             Ok(())
         }
         SecretsCommands::Get { key, project } => {
-            let secret: SecretValue = client.get(&format!(
-                "/v1/projects/{project}/secrets/{}",
-                urlencoding::encode(&key)
-            ))?;
+            let secret: SecretValue = client.post(
+                "/v2/secrets/read",
+                &serde_json::json!({ "project": project, "key": key }),
+            )?;
             println!("{}", secret.value);
             Ok(())
         }
@@ -157,20 +159,17 @@ fn handle_secrets(command: SecretsCommands) -> Result<()> {
                 value.context("provide VALUE or --from-stdin")?
             };
             let secret: SecretValue = client.put(
-                &format!(
-                    "/v1/projects/{project}/secrets/{}",
-                    urlencoding::encode(&key)
-                ),
-                &serde_json::json!({ "value": val }),
+                "/v2/secrets/write",
+                &serde_json::json!({ "project": project, "key": key, "value": val }),
             )?;
             eprintln!("saved {} (v{})", secret.key_name, secret.version);
             Ok(())
         }
         SecretsCommands::Delete { key, project } => {
-            client.delete(&format!(
-                "/v1/projects/{project}/secrets/{}",
-                urlencoding::encode(&key)
-            ))?;
+            client.post_no_content(
+                "/v2/secrets/delete",
+                &serde_json::json!({ "project": project, "key": key }),
+            )?;
             eprintln!("deleted {key}");
             Ok(())
         }

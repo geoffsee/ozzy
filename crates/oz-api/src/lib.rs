@@ -2,6 +2,7 @@ mod auth;
 mod crypto;
 mod db;
 mod error;
+mod openapi;
 mod routes;
 mod session_store;
 mod state;

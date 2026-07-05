@@ -8,7 +8,9 @@ use tower_sessions::Session;
 use worker::send;
 
 use crate::db::api_keys::{resolve_api_key, ResolvedApiKey};
-use crate::db::projects::{get_member_role, get_project_for_profile, get_project_for_profile_by_id};
+use crate::db::projects::{
+    get_member_role, get_project_for_profile, get_project_for_profile_by_id,
+};
 use crate::db::ProjectCryptoRow;
 use crate::error::{AppError, AppResult};
 use crate::session_store::SESSION_PROFILE_KEY;
@@ -115,7 +117,11 @@ impl AuthContext {
         }
     }
 
-    pub async fn project_access(&self, state: &AppState, project_ref: &str) -> AppResult<ProjectAccess> {
+    pub async fn project_access(
+        &self,
+        state: &AppState,
+        project_ref: &str,
+    ) -> AppResult<ProjectAccess> {
         project_access_for(self, state, project_ref).await
     }
 }

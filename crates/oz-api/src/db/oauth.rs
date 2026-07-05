@@ -8,21 +8,17 @@ pub async fn create_oauth_state(
     code_verifier: &str,
     expires_at: &str,
 ) -> AppResult<()> {
-    db.prepare(
-        "INSERT INTO oauth_states (state, code_verifier, expires_at) VALUES (?1, ?2, ?3)",
-    )
-    .bind(&[state.into(), code_verifier.into(), expires_at.into()])?
-    .run()
-    .await
-    .map_err(|e| internal(e))?;
+    db.prepare("INSERT INTO oauth_states (state, code_verifier, expires_at) VALUES (?1, ?2, ?3)")
+        .bind(&[state.into(), code_verifier.into(), expires_at.into()])?
+        .run()
+        .await
+        .map_err(|e| internal(e))?;
     Ok(())
 }
 
 pub async fn consume_oauth_state(db: &D1Database, state: &str) -> AppResult<Option<String>> {
     let row = db
-        .prepare(
-            "SELECT code_verifier, expires_at FROM oauth_states WHERE state = ?1",
-        )
+        .prepare("SELECT code_verifier, expires_at FROM oauth_states WHERE state = ?1")
         .bind(&[state.into()])?
         .first::<serde_json::Value>(None)
         .await
@@ -47,8 +43,9 @@ pub async fn consume_oauth_state(db: &D1Database, state: &str) -> AppResult<Opti
         .map_err(|e| internal(e))?;
 
     let now = time::OffsetDateTime::now_utc();
-    let exp = time::OffsetDateTime::parse(expires_at, &time::format_description::well_known::Rfc3339)
-        .map_err(|_| internal("parse exp"))?;
+    let exp =
+        time::OffsetDateTime::parse(expires_at, &time::format_description::well_known::Rfc3339)
+            .map_err(|_| internal("parse exp"))?;
     if now >= exp {
         return Ok(None);
     }

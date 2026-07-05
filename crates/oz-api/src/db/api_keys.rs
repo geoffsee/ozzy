@@ -2,7 +2,7 @@ use oz_core::{ApiKeyInfo, ApiKeyPermission, ApiKeyScope, CreateApiKeyResponse};
 use serde::Deserialize;
 use worker::D1Database;
 
-use crate::crypto::{generate_api_key_token, hmac_sha256_b64, constant_time_eq};
+use crate::crypto::{constant_time_eq, generate_api_key_token, hmac_sha256_b64};
 use crate::error::{internal, AppResult};
 use oz_core::api_key_prefix;
 
@@ -81,7 +81,9 @@ pub async fn list_api_keys(db: &D1Database, profile_id: &str) -> AppResult<Vec<A
         .await
         .map_err(|e| internal(e))?;
 
-    let keys = rows.results::<serde_json::Value>().map_err(|e| internal(e))?;
+    let keys = rows
+        .results::<serde_json::Value>()
+        .map_err(|e| internal(e))?;
     let mut out = Vec::new();
     for row in keys {
         let id = row["id"].as_str().unwrap_or_default().to_string();
@@ -98,9 +100,7 @@ pub async fn list_api_keys(db: &D1Database, profile_id: &str) -> AppResult<Vec<A
 
 async fn load_scopes(db: &D1Database, api_key_id: &str) -> AppResult<Vec<ApiKeyScope>> {
     let rows = db
-        .prepare(
-            "SELECT project_id, permission FROM api_key_scopes WHERE api_key_id = ?1",
-        )
+        .prepare("SELECT project_id, permission FROM api_key_scopes WHERE api_key_id = ?1")
         .bind(&[api_key_id.into()])?
         .all()
         .await

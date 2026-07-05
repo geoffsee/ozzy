@@ -28,8 +28,7 @@ pub async fn start_github_oauth(state: &AppState) -> AppResult<(String, String)>
     let verifier_bytes = random_bytes(32)?;
     let verifier = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(verifier_bytes);
     let challenge_bytes = sha256_raw(verifier.as_bytes());
-    let challenge =
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&challenge_bytes);
+    let challenge = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&challenge_bytes);
     let oauth_state = uuid::Uuid::new_v4().to_string();
     let expires_at = (time::OffsetDateTime::now_utc() + time::Duration::minutes(10))
         .format(&time::format_description::well_known::Rfc3339)

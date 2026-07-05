@@ -1,0 +1,22 @@
+# Documentation index
+
+- [Project overview](project-overview.md)
+  - Repo layout and core components, including API, UI, CLI, core types, and generated SDK.
+- [Tooling and scripts](tooling-and-scripts.md)
+  - Root `package.json` scripts for builds, OpenAPI generation, tests, and workspace setup.
+- [Web UI usage](web-ui-usage.md)
+  - How to use the browser UI for auth, projects, members, and secrets.
+- [CLI usage](cli-usage.md)
+  - CLI installation and common commands for auth, projects, and secret management.
+- [HTTP API (`/v2`)](http-api.md)
+  - Endpoint quick reference for the public API client-facing contract.
+- [Local development](local-development.md)
+  - Local setup, migration flow, and dev server usage.
+- [Deployment process](deployment.md)
+  - Dedicated deployment flow for Worker, migrations, and SDK publishing.
+- [Wrangler and deployment requirements](wrangler.md)
+  - `wrangler.toml` and environment variables required by the Worker.
+- [OpenAPI and SDK generation](openapi-and-sdk.md)
+  - How to regenerate `openapi.json` and rebuild/publish the Node SDK.
+- [Versioning strategy](versioning.md)
+  - Release policy and semver bump guidance for the published SDK package.

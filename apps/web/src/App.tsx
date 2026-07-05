@@ -107,7 +107,10 @@ export function App() {
       setSecrets([]);
       return;
     }
-    const loadedSecrets = await apiRequest<SecretListItem[]>(`/api/projects/${slug}/secrets`);
+    const loadedSecrets = await apiRequest<SecretListItem[]>("/api/secrets/list", {
+      method: "POST",
+      body: JSON.stringify({ project: slug }),
+    });
     setSecrets(loadedSecrets);
   };
 
@@ -185,12 +188,18 @@ export function App() {
   };
 
   const onRevealSecret = async (slug: string, key: string) => {
-    const value = await apiRequest<SecretValue>(`/api/projects/${slug}/secrets/${encodeURIComponent(key)}`);
+    const value = await apiRequest<SecretValue>("/api/secrets/read", {
+      method: "POST",
+      body: JSON.stringify({ project: slug, key }),
+    });
     alert(`${value.key_name} = ${value.value}`);
   };
 
   const onDeleteSecret = async (slug: string, key: string) => {
-    await apiRequest<null>(`/api/projects/${slug}/secrets/${encodeURIComponent(key)}`, { method: "DELETE" });
+    await apiRequest<null>("/api/secrets/delete", {
+      method: "POST",
+      body: JSON.stringify({ project: slug, key }),
+    });
     await refreshSecrets(slug);
   };
 
@@ -199,9 +208,9 @@ export function App() {
       if (!selectedSecretProject) {
         throw new Error("Choose a project before saving a secret");
       }
-      await apiRequest<null>(`/api/projects/${selectedSecretProject}/secrets/${encodeURIComponent(secretKey)}`, {
+      await apiRequest<null>("/api/secrets/write", {
         method: "PUT",
-        body: JSON.stringify({ value: secretValue }),
+        body: JSON.stringify({ project: selectedSecretProject, key: secretKey, value: secretValue }),
       });
       setSecretValue("");
       await refreshSecrets(selectedSecretProject);

@@ -1,6 +1,6 @@
-use oz_core::{MemberRole, Project};
 use crate::error::AppError;
 use base64::Engine;
+use oz_core::{MemberRole, Project};
 use serde::Deserialize;
 use worker::D1Database;
 
@@ -120,14 +120,12 @@ pub async fn get_project_by_slug_for_owner(
 }
 
 pub async fn get_project_by_id(db: &D1Database, id: &str) -> AppResult<Option<Project>> {
-    db.prepare(
-        "SELECT id, slug, name, owner_profile_id FROM projects WHERE id = ?1",
-    )
-    .bind(&[id.into()])?
-    .first::<ProjectRow>(None)
-    .await
-    .map_err(|e| internal(e))
-    .map(|r| r.map(Into::into))
+    db.prepare("SELECT id, slug, name, owner_profile_id FROM projects WHERE id = ?1")
+        .bind(&[id.into()])?
+        .first::<ProjectRow>(None)
+        .await
+        .map_err(|e| internal(e))
+        .map(|r| r.map(Into::into))
 }
 
 fn project_crypto_from_row(r: serde_json::Value) -> Option<ProjectCryptoRow> {
@@ -239,9 +237,7 @@ pub async fn get_member_role(
     profile_id: &str,
 ) -> AppResult<Option<MemberRole>> {
     let row = db
-        .prepare(
-            "SELECT role FROM project_members WHERE project_id = ?1 AND profile_id = ?2",
-        )
+        .prepare("SELECT role FROM project_members WHERE project_id = ?1 AND profile_id = ?2")
         .bind(&[project_id.into(), profile_id.into()])?
         .first::<serde_json::Value>(None)
         .await
@@ -261,22 +257,14 @@ pub async fn add_member(
          VALUES (?1, ?2, ?3)
          ON CONFLICT(project_id, profile_id) DO UPDATE SET role = excluded.role",
     )
-    .bind(&[
-        project_id.into(),
-        profile_id.into(),
-        role.as_str().into(),
-    ])?
+    .bind(&[project_id.into(), profile_id.into(), role.as_str().into()])?
     .run()
     .await
     .map_err(|e| internal(e))?;
     Ok(())
 }
 
-pub async fn remove_member(
-    db: &D1Database,
-    project_id: &str,
-    profile_id: &str,
-) -> AppResult<()> {
+pub async fn remove_member(db: &D1Database, project_id: &str, profile_id: &str) -> AppResult<()> {
     db.prepare("DELETE FROM project_members WHERE project_id = ?1 AND profile_id = ?2")
         .bind(&[project_id.into(), profile_id.into()])?
         .run()
@@ -285,10 +273,7 @@ pub async fn remove_member(
     Ok(())
 }
 
-pub async fn list_members(
-    db: &D1Database,
-    project_id: &str,
-) -> AppResult<Vec<serde_json::Value>> {
+pub async fn list_members(db: &D1Database, project_id: &str) -> AppResult<Vec<serde_json::Value>> {
     let rows = db
         .prepare(
             "SELECT pm.profile_id, pm.role, p.login
@@ -300,8 +285,7 @@ pub async fn list_members(
         .all()
         .await
         .map_err(|e| internal(e))?;
-    rows.results::<serde_json::Value>()
-        .map_err(|e| internal(e))
+    rows.results::<serde_json::Value>().map_err(|e| internal(e))
 }
 
 trait Pipe: Sized {
