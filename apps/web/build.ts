@@ -7,6 +7,20 @@ const DEFAULT_OUTFILE = path.resolve("dist", "index.html");
 
 const log = (...args: unknown[]) => console.log("[build]", ...args);
 
+function resolveTelemetryEventsEndpoint(): string {
+  const explicit = process.env.BUN_PUBLIC_TELEMETRY_ENDPOINT?.trim();
+  if (explicit) {
+    return explicit;
+  }
+
+  const sink = process.env.TELEMETRY_SINK_URL?.trim();
+  if (sink) {
+    return `${sink.replace(/\/$/, "")}/v1/events`;
+  }
+
+  return process.env.OZ_TELEMETRY_ENDPOINT?.trim() ?? "";
+}
+
 function parseOutfile(argv: string[]): string {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -40,8 +54,12 @@ const build = await Bun.build({
   minify: true,
   target: "browser",
   sourcemap: "none",
+  conditions: ["bun", "import", "default"],
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
+    "process.env.BUN_PUBLIC_TELEMETRY_ENDPOINT": JSON.stringify(
+      resolveTelemetryEventsEndpoint(),
+    ),
   },
 });
 

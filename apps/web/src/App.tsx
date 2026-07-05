@@ -7,6 +7,7 @@ import { ProjectsSection } from "./components/ProjectsSection";
 import { SecretsSection } from "./components/SecretsSection";
 import { StatusMessage } from "./components/StatusMessage";
 import type { ApiKey, Me, MessageState, Project, SecretListItem, SecretValue } from "./components/types";
+import { track } from "./telemetry";
 
 async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const headers = new Headers(opts.headers);
@@ -121,6 +122,7 @@ export function App() {
         setMe(loadedMe);
         const csrf = await api<{ token: string }>("/api/csrf");
         setCsrfToken(csrf.token);
+        track("session_loaded");
         await refreshProjects();
         await refreshKeys();
       } catch {
@@ -141,20 +143,23 @@ export function App() {
   }, [selectedSecretProject]);
 
   const onLogout = async () => {
+    track("auth_logout");
     await apiRequest<null>("/auth/logout", { method: "POST" });
     location.reload();
   };
 
   const onCreateProject = async () => {
     try {
+      const slug = projectSlug;
       await apiRequest<null>("/api/projects", {
         method: "POST",
-        body: JSON.stringify({ slug: projectSlug, name: projectName }),
+        body: JSON.stringify({ slug, name: projectName }),
       });
       setProjectSlug("");
       setProjectName("");
       await refreshProjects();
       setSuccessMessage("Project created");
+      track("project_created", { slug });
     } catch (error) {
       setErrorMessage(error);
     }
@@ -177,6 +182,7 @@ export function App() {
       setKeyOnce(created.key);
       setKeyName("");
       await refreshKeys();
+      track("api_key_created", { project: selectedKeyProject });
     } catch (error) {
       setErrorMessage(error);
     }
@@ -215,6 +221,7 @@ export function App() {
       setSecretValue("");
       await refreshSecrets(selectedSecretProject);
       setSuccessMessage("Secret saved");
+      track("secret_saved", { project: selectedSecretProject });
     } catch (error) {
       setErrorMessage(error);
     }

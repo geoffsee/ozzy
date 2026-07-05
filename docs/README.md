@@ -20,3 +20,5 @@
   - How to regenerate `openapi.json` and rebuild/publish the Node SDK.
 - [Versioning strategy](versioning.md)
   - Release policy and semver bump guidance for the published SDK package.
+- [Privacy and telemetry](privacy.md)
+  - What anonymous usage data oz may collect, what it excludes, and how to opt out.

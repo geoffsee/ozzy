@@ -1,5 +1,6 @@
 mod client;
 mod config;
+mod telemetry;
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
@@ -74,12 +75,42 @@ enum SecretsCommands {
     },
 }
 
-fn main() -> Result<()> {
+fn main() {
+    telemetry::init();
+
+    if let Err(error) = run() {
+        telemetry::report_error(&error);
+        eprintln!("error: {error:#}");
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<()> {
     let cli = Cli::parse();
+    telemetry::track_command(&command_name(&cli.command));
+
     match cli.command {
         Commands::Auth { command } => handle_auth(command),
         Commands::Project { command } => handle_project(command),
         Commands::Secrets { command } => handle_secrets(command),
+    }
+}
+
+fn command_name(command: &Commands) -> String {
+    match command {
+        Commands::Auth { command } => match command {
+            AuthCommands::Login { .. } => "auth login".into(),
+            AuthCommands::Logout => "auth logout".into(),
+        },
+        Commands::Project { command } => match command {
+            ProjectCommands::List => "project list".into(),
+        },
+        Commands::Secrets { command } => match command {
+            SecretsCommands::List { .. } => "secrets list".into(),
+            SecretsCommands::Get { .. } => "secrets get".into(),
+            SecretsCommands::Set { .. } => "secrets set".into(),
+            SecretsCommands::Delete { .. } => "secrets delete".into(),
+        },
     }
 }
 

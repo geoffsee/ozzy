@@ -13,6 +13,9 @@ fn main() {
     let web_dir = workspace_root.join("apps/web");
 
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-env-changed=BUN_PUBLIC_TELEMETRY_ENDPOINT");
+    println!("cargo:rerun-if-env-changed=TELEMETRY_SINK_URL");
+    println!("cargo:rerun-if-env-changed=OZ_TELEMETRY_ENDPOINT");
     for file in ["build.ts", "package.json", "bun.lock", "bunfig.toml"] {
         println!("cargo:rerun-if-changed={}", web_dir.join(file).display());
     }
@@ -21,7 +24,8 @@ fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
     let output_file = out_dir.join("index.html");
 
-    let status = Command::new("bun")
+    let mut build_cmd = Command::new("bun");
+    build_cmd
         .args([
             "run",
             "build",
@@ -30,7 +34,17 @@ fn main() {
                 .to_str()
                 .expect("single-file output path contains invalid UTF-8"),
         ])
-        .current_dir(&web_dir)
+        .current_dir(&web_dir);
+
+    if let Some(endpoint) = resolve_telemetry_events_endpoint() {
+        build_cmd.env("BUN_PUBLIC_TELEMETRY_ENDPOINT", endpoint);
+    }
+
+    if let Ok(sink_url) = env::var("TELEMETRY_SINK_URL") {
+        build_cmd.env("TELEMETRY_SINK_URL", sink_url);
+    }
+
+    let status = build_cmd
         .status()
         .expect("failed to execute bun build for oz web client");
 
@@ -106,4 +120,21 @@ fn resolve_openapi_path(workspace_root: &Path) -> PathBuf {
     };
 
     target_dir.join("openapi").join("openapi.json")
+}
+
+fn resolve_telemetry_events_endpoint() -> Option<String> {
+    env::var("BUN_PUBLIC_TELEMETRY_ENDPOINT")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .or_else(|| {
+            env::var("TELEMETRY_SINK_URL")
+                .ok()
+                .filter(|value| !value.is_empty())
+                .map(|sink| format!("{}/v1/events", sink.trim_end_matches('/')))
+        })
+        .or_else(|| {
+            env::var("OZ_TELEMETRY_ENDPOINT")
+                .ok()
+                .filter(|value| !value.is_empty())
+        })
 }

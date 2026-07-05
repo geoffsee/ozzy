@@ -14,6 +14,7 @@ Self-hosted secrets management.
 - [Wrangler and deployment requirements](docs/wrangler.md)
 - [OpenAPI + SDK generation](docs/openapi-and-sdk.md)
 - [Versioning strategy](docs/versioning.md)
+- [Privacy and telemetry](docs/privacy.md)
 
 For detailed guides (usage, setup, API, deployment, SDK/versioning), start with the documentation index above.
 
