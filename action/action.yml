@@ -1,5 +1,5 @@
-name: Install oz CLI
-description: Install the oz CLI from geoffsee/oz GitHub releases.
+name: Install ozzy CLI
+description: Install the ozzy CLI from geoffsee/ozzy GitHub releases.
 inputs:
   version:
     description: "Version tag to install (without leading v). Use `latest` to install the most recent release."
@@ -10,12 +10,12 @@ inputs:
     required: false
     default: ""
   install-dir:
-    description: "Directory where the oz binary will be installed."
+    description: "Directory where the ozzy binary will be installed."
     required: false
     default: /usr/local/bin
 outputs:
   binary-path:
-    description: "Absolute path to the installed oz binary."
+    description: "Absolute path to the installed ozzy binary."
     value: ${{ steps.install.outputs.binary-path }}
   version:
     description: "Resolved version installed."
@@ -24,7 +24,7 @@ runs:
   using: "composite"
   steps:
     - id: install
-      name: Install oz CLI
+      name: Install ozzy CLI
       shell: bash
       run: |
         set -euo pipefail
@@ -34,7 +34,7 @@ runs:
         INSTALL_DIR="${{ inputs.install-dir }}"
 
         if [ "${VERSION_INPUT}" = "latest" ]; then
-          VERSION="$(curl -fsSL https://api.github.com/repos/geoffsee/oz/releases/latest | jq -r .tag_name | sed 's/^v//')"
+          VERSION="$(curl -fsSL https://api.github.com/repos/geoffsee/ozzy/releases/latest | jq -r .tag_name | sed 's/^v//')"
         else
           VERSION="${VERSION_INPUT#v}"
         fi
@@ -56,19 +56,19 @@ runs:
           TARGET="${TARGET_INPUT}"
         fi
 
-        echo "Installing oz CLI v${VERSION} (${TARGET})..."
+        echo "Installing ozzy CLI v${VERSION} (${TARGET})..."
         TEMP_DIR="$(mktemp -d)"
         trap 'rm -rf "$TEMP_DIR"' EXIT
 
-        curl -fsSL "https://github.com/geoffsee/oz/releases/download/v${VERSION}/cli-${VERSION}-${TARGET}.tar.gz" \
+        curl -fsSL "https://github.com/geoffsee/ozzy/releases/download/v${VERSION}/cli-${VERSION}-${TARGET}.tar.gz" \
           | tar -xz -C "$TEMP_DIR"
 
-        chmod +x "$TEMP_DIR/oz"
+        chmod +x "$TEMP_DIR/ozzy"
 
         mkdir -p "$INSTALL_DIR"
-        sudo mv "$TEMP_DIR/oz" "$INSTALL_DIR/oz"
-        "$INSTALL_DIR/oz" --help >/dev/null
+        sudo mv "$TEMP_DIR/ozzy" "$INSTALL_DIR/ozzy"
+        "$INSTALL_DIR/ozzy" --help >/dev/null
 
-        echo "binary-path=${INSTALL_DIR}/oz" >> "$GITHUB_OUTPUT"
+        echo "binary-path=${INSTALL_DIR}/ozzy" >> "$GITHUB_OUTPUT"
         echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-        echo "Installed oz CLI to: ${INSTALL_DIR}/oz (version ${VERSION})"
+        echo "Installed ozzy CLI to: ${INSTALL_DIR}/ozzy (version ${VERSION})"

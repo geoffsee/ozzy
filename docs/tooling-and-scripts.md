@@ -24,14 +24,14 @@ bun run test:all
 
 Script purpose:
 - `build`: builds Rust API and CLI crates.
-- `api:build`: builds `crates/oz-api`.
-- `api:dev`: runs `wrangler dev -e test` from `crates/oz-api`.
+- `api:build`: builds `crates/ozzy-api`.
+- `api:dev`: runs `wrangler dev -e test` from `crates/ozzy-api`.
 - `api:deploy`: deployment command (documented in [Deployment process](deployment.md)).
 - `cli:build` / `cli:install`: build and install the CLI.
-- `openapi`: regenerates `target/openapi/openapi.json` via `cargo build -p oz-api`.
-- `sdk:build`: generates `packages/oz-node-sdk/dist` from OpenAPI.
+- `openapi`: regenerates `target/openapi/openapi.json` via `cargo build -p ozzy-api`.
+- `sdk:build`: generates `packages/ozzy-node-sdk/dist` from OpenAPI.
 - `sdk:rebuild`: regenerates OpenAPI then SDK.
-- `sdk:publish`: regenerates OpenAPI then publishes `oz-node-sdk`.
-- `workspace:install`: installs workspace deps for root, `apps/web`, and `packages/oz-node-sdk`.
+- `sdk:publish`: regenerates OpenAPI then publishes `ozzy-node-sdk`.
+- `workspace:install`: installs workspace deps for root, `apps/web`, and `packages/ozzy-node-sdk`.
 - `build:web` / `dev:web` / `test:web`: run web client scripts.
 - `test:api` / `test:cli` / `test:all`: run Rust tests.

@@ -18,7 +18,7 @@ function resolveTelemetryEventsEndpoint(): string {
     return `${sink.replace(/\/$/, "")}/v1/events`;
   }
 
-  return process.env.OZ_TELEMETRY_ENDPOINT?.trim() ?? "";
+  return process.env.OZZY_TELEMETRY_ENDPOINT?.trim() ?? "";
 }
 
 function parseOutfile(argv: string[]): string {

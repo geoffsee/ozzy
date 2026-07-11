@@ -4,10 +4,10 @@ Deployment is managed separately from local usage.
 
 ## API deployment
 
-From `crates/oz-api`:
+From `crates/ozzy-api`:
 
 ```bash
-wrangler d1 migrations apply oz --remote
+wrangler d1 migrations apply ozzy --remote
 wrangler deploy
 ```
 
@@ -21,9 +21,9 @@ bun run api:deploy
 
 Deploying requires:
 
-- `crates/oz-api/wrangler.toml` configured for the target environment.
+- `crates/ozzy-api/wrangler.toml` configured for the target environment.
 - Required runtime values in project secrets (not checked into source control).
-- A valid production `OZ_BASE_URL`.
+- A valid production `OZZY_BASE_URL`.
 
 ## SDK publish
 

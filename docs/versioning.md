@@ -9,6 +9,6 @@ Use semantic versioning (`MAJOR.MINOR.PATCH`) for the published Node SDK.
 Release flow:
 
 1. Run `bun run sdk:rebuild`.
-2. Update `packages/oz-node-sdk/package.json` version.
-3. Publish with `bun --cwd packages/oz-node-sdk publish --access public`.
+2. Update `packages/ozzy-node-sdk/package.json` version.
+3. Publish with `bun --cwd packages/ozzy-node-sdk publish --access public`.
 4. Tag release (example: `v0.1.1`) and include a short changelog note.

@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "crates/oz-cli",
-    "crates/oz-api",
-    "crates/oz-core",
+    "crates/ozzy-cli",
+    "crates/ozzy-api",
+    "crates/ozzy-core",
 ]
 resolver = "2"

@@ -393,7 +393,7 @@ dependencies = [
  "assert_cmd",
  "clap",
  "dirs 6.0.0",
- "oz-core",
+ "ozzy-core",
  "predicates",
  "reqwest 0.12.28",
  "serde",
@@ -1422,7 +1422,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
-name = "oz-api"
+name = "ozzy-api"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
@@ -1431,7 +1431,7 @@ dependencies = [
  "base64 0.22.1",
  "getrandom 0.3.4",
  "hmac",
- "oz-core",
+ "ozzy-core",
  "proptest",
  "serde",
  "serde_json",
@@ -1451,7 +1451,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oz-core"
+name = "ozzy-core"
 version = "0.1.0"
 dependencies = [
  "proptest",

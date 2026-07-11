@@ -1,4 +1,4 @@
-# oz
+# ozzy
 
 Self-hosted secrets management.
 
@@ -22,28 +22,28 @@ For detailed guides (usage, setup, API, deployment, SDK/versioning), start with 
 
 ### Installation
 
-Find the latest version for your platform [here](https://github.com/geoffsee/oz/releases/latest)
+Find the latest version for your platform [here](https://github.com/geoffsee/ozzy/releases/latest)
 
 ```bash
-curl -L https://github.com/geoffsee/oz/releases/latest/download/oz-<os>-<arch>.tar.gz | tar -xz
-chmod +x oz && mv oz /usr/local/bin/oz
+curl -L https://github.com/geoffsee/ozzy/releases/latest/download/ozzy-<os>-<arch>.tar.gz | tar -xz
+chmod +x ozzy && mv ozzy /usr/local/bin/ozzy
 ```
 
 ### Usage
 
-1. Visit the Web UI at `https://your-oz-api.example.com` and authenticate with your Github account. 
+1. Visit the Web UI at `https://your-ozzy-api.example.com` and authenticate with your Github account. 
 2. Configure a project
 3. Create an API key for the project
 4. Use the API key to authenticate with the CLI
 5. Use the CLI to manage secrets (it is also possible to use the Web UI)
 
 ```bash
-# Login to your deployed oz endpoint
-oz auth login --api-key your-api-key --api-url https://your-oz-api.example.com
+# Login to your deployed ozzy endpoint
+ozzy auth login --api-key your-api-key --api-url https://your-ozzy-api.example.com
 
 # Set and then fetch a secret
-oz secrets set DATABASE_URL --project my-app "postgres://..."
-oz secrets get DATABASE_URL --project my-app
+ozzy secrets set DATABASE_URL --project my-app "postgres://..."
+ozzy secrets get DATABASE_URL --project my-app
 ```
 
 ## SDK usage
@@ -51,15 +51,15 @@ oz secrets get DATABASE_URL --project my-app
 ### Node.js SDK
 
 ```bash
-npm install oz-node-sdk
+npm install ozzy-node-sdk
 ```
 
 ```js
-import { OzNodeSdkClient } from 'oz-node-sdk';
+import { OzzyNodeSdkClient } from 'ozzy-node-sdk';
 
-const client = new OzNodeSdkClient({
-  baseUrl: 'https://your-oz-api.example.com',
-  apiKey: 'oz_live_xxx',
+const client = new OzzyNodeSdkClient({
+  baseUrl: 'https://your-ozzy-api.example.com',
+  apiKey: 'ozzy_live_xxx',
 });
 
 const project = 'my-app';

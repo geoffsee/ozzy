@@ -1,7 +1,7 @@
 # Rust
 /target
 
-# Cloudflare Workers (oz-api)
+# Cloudflare Workers (ozzy-api)
 node_modules
 .wrangler
 .dev.vars
@@ -13,4 +13,4 @@ node_modules
 .DS_Store
 /.idea/
 wrangler.toml
-/crates/oz-api/build/
+/crates/ozzy-api/build/

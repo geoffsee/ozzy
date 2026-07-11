@@ -229,7 +229,7 @@ export function App() {
 
   return (
     <main>
-      <h1>oz secrets</h1>
+      <h1>ozzy secrets</h1>
 
       <AuthPromptCard authChecked={authChecked} me={me} />
 

@@ -21,4 +21,4 @@
 - [Versioning strategy](versioning.md)
   - Release policy and semver bump guidance for the published SDK package.
 - [Privacy and telemetry](privacy.md)
-  - What anonymous usage data oz may collect, what it excludes, and how to opt out.
+  - What anonymous usage data ozzy may collect, what it excludes, and how to opt out.

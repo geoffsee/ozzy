@@ -1,0 +1,43 @@
+{
+  "name": "ozzy-node-sdk",
+  "version": "0.1.2",
+  "private": false,
+  "license": "MIT",
+  "author": "github.com/geoffsee",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun run ./scripts/build.ts",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "bun run clean && bun run build",
+    "postpublish": "bun run clean"
+  },
+  "keywords": [
+    "ozzy",
+    "sdk",
+    "openapi",
+    "secrets",
+    "api",
+    "typescript"
+  ],
+  "devDependencies": {
+    "oas": "^37.1.0"
+  },
+  "description": "Generated ozzy API Node SDK from OpenAPI",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ]
+}

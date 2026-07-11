@@ -83,10 +83,10 @@ describe("ApiKeysSection", () => {
       <ApiKeysSection
         keyName="deploy"
         keyPermission="read"
-        keyOnce="oz_live_123"
+        keyOnce="ozzy_live_123"
         selectedKeyProject="alpha"
         projects={projects}
-        keys={[{ id: "key-1", key_prefix: "oz_pre", name: "Deploy key" }]}
+        keys={[{ id: "key-1", key_prefix: "ozzy_pre", name: "Deploy key" }]}
         hasProjects={true}
         onKeyNameChange={onKeyNameChange}
         onKeyPermissionChange={onKeyPermissionChange}
@@ -109,7 +109,7 @@ describe("ApiKeysSection", () => {
     expect(onCreateKey).toHaveBeenCalledTimes(1);
 
     expect(queries.getByText("Copy this key now. It won't be shown again.")).toBeTruthy();
-    expect(queries.getByText("oz_live_123")).toBeTruthy();
+    expect(queries.getByText("ozzy_live_123")).toBeTruthy();
 
     fireEvent.click(queries.getByRole("button", { name: "Revoke" }));
     expect(onRevokeKey).toHaveBeenCalledWith("key-1");

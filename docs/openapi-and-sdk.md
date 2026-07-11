@@ -1,6 +1,6 @@
 # OpenAPI and Node SDK generation
 
-OpenAPI is generated on every `oz-api` build to:
+OpenAPI is generated on every `ozzy-api` build to:
 
 - `target/openapi/openapi.json` (or under `$CARGO_TARGET_DIR`)
 

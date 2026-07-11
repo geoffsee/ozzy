@@ -11,7 +11,7 @@ export function initTelemetry() {
   }
 
   client = new TelemetryClient({
-    appId: "oz-web",
+    appId: "ozzy-web",
     endpoint: ENDPOINT,
     appVersion: APP_VERSION,
   });

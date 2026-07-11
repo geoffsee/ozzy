@@ -1,6 +1,6 @@
-# Install oz CLI GitHub Action
+# Install ozzy CLI GitHub Action
 
-Reusable composite action to install the `oz` CLI in GitHub Actions workflows.
+Reusable composite action to install the `ozzy` CLI in GitHub Actions workflows.
 
 ### Inputs
 
@@ -11,7 +11,7 @@ Reusable composite action to install the `oz` CLI in GitHub Actions workflows.
 ### Example
 
 ```yaml
-- name: Install oz CLI
+- name: Install ozzy CLI
   uses: ./action
   with:
     version: latest
@@ -19,5 +19,5 @@ Reusable composite action to install the `oz` CLI in GitHub Actions workflows.
 
 ### Outputs
 
-- `binary-path`: absolute path to `oz`
+- `binary-path`: absolute path to `ozzy`
 - `version`: resolved installed version

@@ -3,18 +3,18 @@
 Use an API key as a bearer token.
 
 ```bash
-curl -H "Authorization: Bearer oz_live_..." \
-  https://your-oz-api.example.com/v2/projects
+curl -H "Authorization: Bearer ozzy_live_..." \
+  https://your-ozzy-api.example.com/v2/projects
 
-curl -X POST -H "Authorization: Bearer oz_live_..." \
+curl -X POST -H "Authorization: Bearer ozzy_live_..." \
   -H "Content-Type: application/json" \
   -d '{"project":"my-app","key":"DATABASE_URL"}' \
-  https://your-oz-api.example.com/v2/secrets/read
+  https://your-ozzy-api.example.com/v2/secrets/read
 
-curl -X PUT -H "Authorization: Bearer oz_live_..." \
+curl -X PUT -H "Authorization: Bearer ozzy_live_..." \
   -H "Content-Type: application/json" \
   -d '{"project":"my-app","key":"DATABASE_URL","value":"postgres://..."}' \
-  https://your-oz-api.example.com/v2/secrets/write
+  https://your-ozzy-api.example.com/v2/secrets/write
 ```
 
 | Method | Path | Description |
